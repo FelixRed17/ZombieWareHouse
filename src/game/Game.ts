@@ -8,6 +8,7 @@ import { Lighting } from '../world/Lighting';
 import { Pickups } from '../world/Pickups';
 import { Warehouse } from '../world/Warehouse';
 import { GameLoop } from './GameLoop';
+import { applyShotResult, pauseOnUnlock, resetRun, resumeRun, routeCombatInput, runGameplayFrame } from './GameplayFrame';
 import { GameState } from './GameState';
 
 /** Composition root, owned by Team 1. Other systems communicate via contracts. */
@@ -26,7 +27,7 @@ export class Game {
   private readonly hud: HUD;
   private readonly loop = new GameLoop((dtSeconds) => this.update(dtSeconds));
   private readonly events = new AbortController();
-  private pendingStart = false;
+  private pendingCapture: 'newRound' | 'resume' | null = null;
 
   constructor(private readonly viewport: HTMLElement, ui: HTMLElement) {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -47,25 +48,20 @@ export class Game {
     this.player.controls.addEventListener('unlock', this.onUnlock);
     const options = { signal: this.events.signal };
     window.addEventListener('resize', this.resize, options);
-    window.addEventListener('blur', this.pause, options);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); }, options);
-    document.addEventListener('pointerlockerror', () => {
-      this.pendingStart = false;
-      this.hud.showNotice('Mouse capture failed. Open this URL directly in a desktop browser and retry.');
-    }, options);
+    window.addEventListener('blur', this.handleFocusLoss, options);
+    document.addEventListener('visibilitychange', this.onVisibilityChange, options);
+    document.addEventListener('pointerlockerror', this.onPointerLockError, options);
     window.addEventListener('mousedown', (event) => {
-      if (event.button !== 0 || this.state.phase !== 'playing' || !this.player.controls.isLocked) return;
-      this.scene.updateMatrixWorld(true);
-      const shot = this.weapon.tryShoot(this.enemies.getTargets(), this.warehouse.shotBlockers);
-      if (shot) {
-        this.audio.play('pistol');
-        if (shot.killed) this.state.kills += 1;
-      }
+      if (event.button !== 0) return;
+      routeCombatInput(this.state, this.hasGameCapture(), () => {
+        const shot = this.weapon.tryShoot(this.enemies.getTargets(), this.warehouse.shotBlockers);
+        if (shot) {
+          this.audio.play('pistol');
+          applyShotResult(this.state, shot);
+        }
+      });
     }, options);
-    window.addEventListener('keydown', (event) => {
-      if (event.repeat || this.state.phase !== 'playing' || !this.player.controls.isLocked) return;
-      if (event.code === 'KeyR' && this.weapon.reload()) this.audio.play('reload');
-    }, options);
+    window.addEventListener('keydown', this.onKeyDown, options);
     this.resize();
     this.hud.render(this.state.snapshot(this.weapon.snapshot));
   }
@@ -73,67 +69,146 @@ export class Game {
   start(): void { this.loop.start(); }
 
   private requestPlay(newRound: boolean): void {
+    const action = newRound ? 'newRound' : 'resume';
+    if (this.pendingCapture !== null || !this.canBegin(action)) return;
+    if (!this.isForeground()) {
+      this.hud.showNotice('Return to this tab, then click the visible action to continue.');
+      return;
+    }
+
+    this.pendingCapture = action;
     this.audio.unlock();
-    this.pendingStart = newRound;
-    // Must remain directly inside the user's click gesture.
-    this.player.controls.lock();
+    // Keep the capture request synchronous with the Play/Resume/Restart gesture.
+    try {
+      this.player.controls.lock();
+    } catch {
+      this.onPointerLockError();
+    }
   }
 
   private readonly onLock = (): void => {
-    if (this.pendingStart) {
-      this.player.reset();
-      this.weapon.reset();
-      this.enemies.reset();
-      this.pickups.reset();
-      this.state.reset();
-      this.pendingStart = false;
-    } else if (this.state.phase === 'paused') {
-      this.state.phase = 'playing';
+    const action = this.pendingCapture;
+    // Three.js dispatches `lock` just before it sets controls.isLocked, so check the
+    // browser's pointerLockElement during this event instead of the later flag.
+    const capturedByGame = document.pointerLockElement === this.renderer.domElement;
+    if (action === null || !capturedByGame || !this.isForeground() || !this.canBegin(action)) {
+      this.pendingCapture = null;
+      this.audio.setPlaying(false);
+      if (capturedByGame) this.player.controls.unlock();
+      if (!this.isForeground()) {
+        if (this.state.phase === 'playing') this.state.phase = 'paused';
+        this.hud.showNotice('Focus changed before mouse capture. Return and click the visible action to retry.');
+      } else if (action === null) {
+        this.hud.showNotice('Mouse capture was canceled. Click the visible action to retry.');
+      } else if (!capturedByGame) {
+        this.showCaptureFailure();
+      }
+      return;
+    }
+
+    this.pendingCapture = null;
+    if (action === 'newRound') {
+      resetRun({
+        resetPlayer: () => this.player.reset(),
+        resetWeapon: () => this.weapon.reset(),
+        resetEnemies: () => this.enemies.reset(),
+        resetPickups: () => this.pickups.reset(),
+        resetState: () => this.state.reset(),
+      });
+    } else {
+      resumeRun(this.state);
     }
     this.audio.setPlaying(this.state.phase === 'playing');
-    this.hud.showNotice('PREVIEW · COMBAT + ENEMIES PENDING');
+    this.hud.showNotice('PREVIEW · LIVE ENEMIES, PICKUPS + AUDIO NOT INTEGRATED');
   };
 
   private readonly onUnlock = (): void => {
-    if (this.state.phase === 'playing') this.state.phase = 'paused';
+    pauseOnUnlock(this.state);
     this.audio.setPlaying(false);
   };
 
-  private readonly pause = (): void => {
-    if (this.state.phase !== 'playing') return;
-    this.state.phase = 'paused';
-    this.player.controls.unlock();
+  private readonly handleFocusLoss = (): void => {
+    const hadPendingCapture = this.pendingCapture !== null;
+    this.pendingCapture = null;
+    if (this.state.phase === 'playing') this.state.phase = 'paused';
     this.audio.setPlaying(false);
+    if (this.player.controls.isLocked) this.player.controls.unlock();
+    if (hadPendingCapture) {
+      this.hud.showNotice('Focus changed before mouse capture. Return and click the visible action to retry.');
+    }
+  };
+
+  private readonly onVisibilityChange = (): void => {
+    if (document.hidden) this.handleFocusLoss();
+  };
+
+  private readonly onPointerLockError = (): void => {
+    if (this.pendingCapture === null) return;
+    this.pendingCapture = null;
+    this.audio.setPlaying(false);
+    this.showCaptureFailure();
+  };
+
+  private showCaptureFailure(): void {
+    this.hud.showNotice('Mouse capture failed. Click Enter Warehouse, Resume, or Try Again to retry; a direct desktop URL may be needed.');
+  }
+
+  private isForeground(): boolean {
+    return !document.hidden && document.hasFocus();
+  }
+
+  private canBegin(action: 'newRound' | 'resume'): boolean {
+    if (action === 'resume') return this.state.phase === 'paused';
+    return this.state.phase === 'menu' || this.state.phase === 'gameOver' || this.state.phase === 'victory';
+  }
+
+  private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (event.code === 'Escape' && this.pendingCapture !== null) {
+      this.pendingCapture = null;
+      if (this.player.controls.isLocked) this.player.controls.unlock();
+      this.hud.showNotice('Mouse capture canceled. Click the visible action to retry.');
+      return;
+    }
+    if (event.repeat) return;
+    routeCombatInput(this.state, this.hasGameCapture(), () => {
+      if (event.code === 'KeyR' && this.weapon.reload()) this.audio.play('reload');
+    });
   };
 
   private returnToMenu(): void {
     this.state.phase = 'menu';
-    this.pendingStart = false;
+    this.pendingCapture = null;
     this.player.controls.unlock();
     this.audio.setPlaying(false);
     this.hud.showNotice('DESKTOP · KEYBOARD + MOUSE');
   }
 
   private update(dtSeconds: number): void {
-    if (this.state.phase === 'playing' && this.player.controls.isLocked) {
-      this.player.update(dtSeconds, this.warehouse);
-      this.weapon.update(dtSeconds);
-      this.state.damage(this.enemies.update(dtSeconds, this.state.elapsedSeconds, this.player.position, this.warehouse));
-      if (this.state.phase === 'playing') {
-        for (const effect of this.pickups.update(dtSeconds, this.player.position)) {
-          if (effect.kind === 'health') this.state.heal(effect.amount);
-          else this.weapon.addAmmo(effect.amount);
-        }
-        // Fatal damage takes precedence over surviving the final frame.
-        this.state.advance(dtSeconds);
-      }
-      if (this.state.phase !== 'playing') {
-        this.player.controls.unlock();
-        this.audio.setPlaying(false);
-      }
+    const hadGameCapture = this.hasGameCapture();
+    const foreground = this.isForeground();
+    if (this.state.phase === 'playing' && (!foreground || !hadGameCapture)) this.handleFocusLoss();
+    const ranGameplayFrame = runGameplayFrame(
+      dtSeconds,
+      this.state.phase === 'playing' && foreground && hadGameCapture,
+      this.state,
+      {
+        movePlayer: (dt) => this.player.update(dt, this.warehouse),
+        advanceWeapon: (dt) => this.weapon.update(dt),
+        updateEnemies: (dt, elapsed) => this.enemies.update(dt, elapsed, this.player.position, this.warehouse),
+        updatePickups: (dt) => this.pickups.update(dt, this.player.position),
+        addAmmo: (amount) => this.weapon.addAmmo(amount),
+      },
+    );
+    if (ranGameplayFrame && this.state.phase !== 'playing') {
+      this.player.controls.unlock();
+      this.audio.setPlaying(false);
     }
     this.hud.render(this.state.snapshot(this.weapon.snapshot));
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private hasGameCapture(): boolean {
+    return this.player.controls.isLocked && document.pointerLockElement === this.renderer.domElement;
   }
 
   private readonly resize = (): void => {
