@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Warehouse eye-height review</title>
+<style>body{margin:0;background:#080f18;color:white;font:14px system-ui}nav{position:fixed;top:12px;left:12px}button{font:inherit;padding:8px;margin:3px}canvas{display:block}</style>
+<nav>Eye height 1.7m · static world review <button data-view="start">Start</button><button data-view="cover">Cover / pickups</button><button data-view="rack">Empty rack bay</button></nav>
+<script type="module">
+import {Scene,PerspectiveCamera,WebGLRenderer,ACESFilmicToneMapping} from 'three';
+import {Warehouse} from '../Warehouse.ts';
+import {Lighting} from '../Lighting.ts';
+const scene=new Scene(), world=new Warehouse(), lights=new Lighting(scene);
+scene.add(world.root,lights.root);
+const renderer=new WebGLRenderer({antialias:true});renderer.toneMapping=ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+document.body.append(renderer.domElement);
+const camera=new PerspectiveCamera(72,1,.1,120);
+const views={start:[0,18,0,-20],cover:[0,3,-10,-12],rack:[-17,-14,-17,-21]};
+function render(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.render(scene,camera);}
+function view(name){const [x,z,tx,tz]=views[name];camera.position.set(x,1.7,z);camera.lookAt(tx,1.7,tz);render();}
+const events=new AbortController();document.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view),{signal:events.signal}));
+window.addEventListener('resize',render,{signal:events.signal});
+window.addEventListener('pagehide',()=>{events.abort();world.dispose();lights.dispose();renderer.dispose();},{once:true});view('start');
+</script></html>
