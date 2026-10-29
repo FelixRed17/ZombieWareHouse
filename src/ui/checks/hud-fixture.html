@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080e14" />
+    <title>Zombie Warehouse · HUD fixture</title>
+    <link rel="stylesheet" href="../../../style.css" />
+    <link rel="stylesheet" href="./hud-fixture.css" />
+  </head>
+  <body>
+    <div id="ui" data-phase="menu"></div>
+    <aside class="fixture-tools" aria-label="HUD preview controls">
+      <button class="fixture-toggle" id="fixture-toggle" type="button" aria-expanded="true" aria-controls="fixture-content">HIDE FIXTURE</button>
+      <div id="fixture-content">
+        <p class="fixture-heading">HUD SNAPSHOT FIXTURE</p>
+        <p class="fixture-note">Isolated preview data. This page does not create a Game or request pointer lock.</p>
+        <label>Phase
+          <select id="phase">
+            <option value="menu">Main menu</option>
+            <option value="playing">Playing</option>
+            <option value="paused">Paused</option>
+            <option value="gameOver">Death</option>
+            <option value="victory">Victory</option>
+          </select>
+        </label>
+        <label>Health <output id="health-output">100</output>
+          <input id="health" type="range" min="0" max="100" value="100" />
+        </label>
+        <label>Magazine <output id="ammo-output">8</output>
+          <input id="ammo" type="range" min="0" max="8" value="8" />
+        </label>
+        <label>Reserve <output id="reserve-output">48</output>
+          <input id="reserve" type="range" min="0" max="96" value="48" />
+        </label>
+        <label>Seconds remaining <output id="time-output">300</output>
+          <input id="time" type="range" min="0" max="300" value="300" />
+        </label>
+        <label>Kills <output id="kills-output">0</output>
+          <input id="kills" type="range" min="0" max="24" value="0" />
+        </label>
+        <label class="fixture-check"><input id="reloading" type="checkbox" /> Reloading</label>
+        <label class="fixture-check"><input id="audio-available" type="checkbox" checked /> Audio available</label>
+        <label class="fixture-check"><input id="audio-muted" type="checkbox" /> Muted</label>
+        <button id="long-error" type="button">Show long pointer-lock error</button>
+        <button id="audit-listeners" type="button">Audit listener cleanup</button>
+        <output id="fixture-result" aria-live="polite"></output>
+      </div>
+    </aside>
+    <script type="module" src="./hud-fixture.ts"></script>
+  </body>
+</html>

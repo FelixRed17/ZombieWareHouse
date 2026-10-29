@@ -120,6 +120,7 @@ export class Game {
     }
     this.audio.setPlaying(this.state.phase === 'playing');
     this.hud.showNotice('PREVIEW · LIVE ENEMIES, PICKUPS + AUDIO NOT INTEGRATED');
+    this.hud.showNotice('PREVIEW · WEAPON COMBAT PENDING');
   };
 
   private readonly onUnlock = (): void => {

@@ -1,0 +1,42 @@
+.fixture-tools {
+  position: fixed;
+  z-index: 5;
+  top: 82px;
+  right: 14px;
+  width: min(290px, calc(100vw - 28px));
+  max-height: calc(100dvh - 96px);
+  overflow: auto;
+  border: 1px solid #7990a466;
+  background: #09121df2;
+  color: #eaf0f5;
+  box-shadow: 0 16px 45px #0008;
+  pointer-events: auto;
+  font-size: 11px;
+}
+.fixture-tools button, .fixture-tools select, .fixture-tools input { font: inherit; }
+.fixture-toggle, #fixture-content > button {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 11px;
+  border: 1px solid #66809566;
+  background: #162635;
+  color: #f4f7fa;
+  text-align: left;
+  letter-spacing: .6px;
+}
+.fixture-toggle { border: 0; background: #263d4c; font-weight: 700; }
+#fixture-content { display: grid; gap: 9px; padding: 12px; }
+.fixture-heading { margin: 0; color: #f1c56b; font-weight: 700; letter-spacing: 1.3px; }
+.fixture-note { margin: 0; color: #aebdca; line-height: 1.45; }
+.fixture-tools label:not(.fixture-check) { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; color: #cbd7df; }
+.fixture-tools label select { grid-column: 1 / -1; width: 100%; min-height: 32px; border: 1px solid #66809566; background: #101e2b; color: #fff; padding: 5px 8px; }
+.fixture-tools input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: #ee343f; }
+.fixture-tools output { color: #fff; font-variant-numeric: tabular-nums; }
+.fixture-check { display: flex; align-items: center; gap: 8px; color: #cbd7df; }
+.fixture-check input { accent-color: #ee343f; }
+#fixture-result { color: #90dda9; line-height: 1.4; }
+.fixture-tools.is-collapsed #fixture-content { display: none; }
+@media (max-width: 760px) {
+  .fixture-tools { top: 64px; right: 8px; width: min(260px, calc(100vw - 16px)); max-height: calc(100dvh - 76px); }
+}
