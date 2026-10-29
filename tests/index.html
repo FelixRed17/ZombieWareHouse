@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zombie Warehouse · Gameplay checks</title>
+    <style>
+      body { margin: 2rem; background: #111820; color: #e7edf2; font: 16px/1.5 system-ui, sans-serif; }
+      pre { padding: 1rem; background: #1b2732; border-radius: 0.5rem; white-space: pre-wrap; }
+      .pass { color: #8ee6aa; }
+      .fail { color: #ff9c9c; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Gameplay behavior checks</h1>
+      <p>Dependency-free browser checks for weapon behavior, round state, and production frame orchestration.</p>
+      <pre id="results" aria-live="polite">Running…</pre>
+    </main>
+    <script type="module" src="./weapon.test.ts"></script>
+  </body>
+</html>

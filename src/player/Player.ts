@@ -12,7 +12,8 @@ export class Player {
     this.controls = new PointerLockControls(camera, element);
     this.controls.minPolarAngle = 0.12;
     this.controls.maxPolarAngle = Math.PI - 0.12;
-    this.controls.addEventListener('unlock', () => this.movement.clear());
+    this.controls.addEventListener('lock', this.onLock);
+    this.controls.addEventListener('unlock', this.onUnlock);
     this.reset();
   }
 
@@ -24,13 +25,22 @@ export class Player {
     this.camera.rotation.set(0, 0, 0);
   }
 
+  private readonly onLock = (): void => {
+    // A delayed lock must not re-enable keys after the tab or window lost focus.
+    this.movement.setActive(!document.hidden && document.hasFocus());
+  };
+
+  private readonly onUnlock = (): void => this.movement.setActive(false);
+
   update(dtSeconds: number, world: WorldQuery): void {
     if (this.controls.isLocked) this.movement.update(dtSeconds, this.camera, world);
   }
 
   dispose(): void {
-    this.movement.dispose();
     this.controls.unlock();
+    this.controls.removeEventListener('lock', this.onLock);
+    this.controls.removeEventListener('unlock', this.onUnlock);
+    this.movement.dispose();
     this.controls.dispose();
   }
 }
