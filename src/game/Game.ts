@@ -91,7 +91,7 @@ export class Game {
       this.state.phase = 'playing';
     }
     this.audio.setPlaying(this.state.phase === 'playing');
-    this.hud.showNotice('PREVIEW · COMBAT + ENEMIES PENDING');
+    this.hud.showNotice('PREVIEW · WEAPON COMBAT PENDING');
   };
 
   private readonly onUnlock = (): void => {
