@@ -28,13 +28,13 @@ Node.js **22.12 or later** is the project's baseline. Commit the generated `pack
 | Working foundation | Team implementation still required |
 | --- | --- |
 | Vite entry point and strict TypeScript | Pistol shooting, reload, recoil, and view model |
-| Three.js warehouse greybox and lighting | Zombie meshes, AI, attacks, spawning, and animations |
+| Three.js warehouse greybox and lighting | Enemy playtesting and future animation assets |
 | Pointer-lock mouse-look, WASD, sprint | Health/ammo pickup entities and effects |
 | Basic wall/crate collision | GLB asset loading and fallback handling |
 | Five-minute simulation clock and health/state helpers | Audio loading, playback, and mute control |
 | Menu, pause, end-screen scaffolds, HUD, cleanup | Full gameplay integration and playtesting |
 
-**Weapon, AI, spawning, pickup, and audio files contain explicit TODO stubs.** The preview has no enemies and does not shoot. Reaching the timer's end currently exercises the victory screen without a survival challenge. No `.glb` or `.mp3` files are bundled or fetched.
+**Weapon, pickup, and audio files contain explicit TODO stubs.** The preview now spawns pursuing zombies and flying pumpkins, but the pistol does not shoot yet. Reaching the timer's end currently exercises the victory screen without a complete survival challenge. No `.glb` or `.mp3` files are bundled or fetched.
 
 ## Team handoff
 
@@ -67,6 +67,8 @@ ZombieWarehouse/
 │   │   └── Weapon.ts
 │   ├── enemies/
 │   │   ├── Zombie.ts
+│   │   ├── EnemyBase.ts
+│   │   ├── FlyingPumpkin.ts
 │   │   ├── ZombieAI.ts
 │   │   └── ZombieSpawner.ts
 │   ├── world/
@@ -102,7 +104,7 @@ ZombieWarehouse/
 
 Use [the supplied reference](docs/reference/design-reference.png) for the dark blue industrial setting, red danger accents, yellow warehouse details, and green victory state. It is concept art, not a game-ready model or texture pack. Prioritize a readable, playable greybox before replacing meshes with licensed assets.
 
-The first release is single-player and desktop-only, with one flat warehouse, one pistol, one zombie type, and two pickup types. Additional weapons, multiplayer, a shop, a backend, mobile touch controls, the optional upper floor, and a minimap are follow-up work.
+The first release is single-player and desktop-only, with one flat warehouse, one pistol, zombies and flying-pumpkin enemies, and two pickup types. Additional weapons, multiplayer, a shop, a backend, mobile touch controls, the optional upper floor, and a minimap are follow-up work.
 
 The output of `npm run build` is `dist/`, suitable for static hosting. `base: './'` and the asset manifest support a repository subdirectory. Hosting setup and deployment are future tasks; there is no deployed site yet.
 
